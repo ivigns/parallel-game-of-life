@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
   size_t num_threads = 4;
   if (argc >= 2) {
     if (StrIsInt(argv[1])) {
-      num_threads = std::stol(argv[2]);
+      num_threads = std::stol(argv[1]);
     } else {
       rules = argv[1];
     }
