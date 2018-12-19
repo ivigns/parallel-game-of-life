@@ -315,6 +315,9 @@ void GameOfLife::SlaveRecv(bool* border_gained, bool& quit,
   MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, mpi_comm_, &status);
   if (status.MPI_SOURCE == 0) {
     if (status.MPI_TAG == MpiGolTag::Running) {
+      char x = 1;
+      MPI_Recv(&x, 1, MPI_BYTE, 0, MpiGolTag::Running, mpi_comm_,
+          MPI_STATUS_IGNORE);
       MPI_Send(&running_, 1, MPI_CXX_BOOL, 0, MpiGolTag::Running, mpi_comm_);
 
     } else if (status.MPI_TAG == MpiGolTag::Run) {
