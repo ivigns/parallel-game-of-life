@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
         }
         if (!gol.Run(std::stol(args[1]))) {
           std::cout << args[0]
-                    << ": already running or no field has been created yet.\n";
+                    << ": no field has been created yet.\n";
         } else {
           std::cout << "Started running " << std::stol(args[1]) << " iterations.\n";
         }
