@@ -65,6 +65,7 @@ class GameOfLife {
 
   MPI_Comm mpi_comm_;
   int world_size_;
+  int useful_world_size_;
   int world_rank_;
 
   struct Rules {  // Правила игры. Числа окружающих живых ячеек, при которых
