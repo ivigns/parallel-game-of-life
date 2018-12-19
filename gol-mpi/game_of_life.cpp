@@ -279,21 +279,17 @@ void GameOfLife::SlaveSynchronize() {
             MPI_BYTE, process_[world_rank_ - 2], MpiGolTag::Run, mpi_comm_);
         MPI_Send(field_[borders_.back() - 1].data(), static_cast<int>(field_[0].size()),
             MPI_BYTE, process_[world_rank_], MpiGolTag::Run, mpi_comm_);
-        std::cout << world_rank_ << " sent.\n";
         while (!(border_gained[0] && border_gained[1])) {
           SlaveRecv(border_gained, quit, notify_master);
         }
-        std::cout << world_rank_ << " received.\n";
       } else {
         while (!(border_gained[0] && border_gained[1])) {
           SlaveRecv(border_gained, quit, notify_master);
         }
-        std::cout << world_rank_ << " received.\n";
         MPI_Send(field_[borders_[0]].data(), static_cast<int>(field_[0].size()),
             MPI_BYTE, process_[world_rank_ - 2], MpiGolTag::Run, mpi_comm_);
         MPI_Send(field_[borders_.back() - 1].data(), static_cast<int>(field_[0].size()),
             MPI_BYTE, process_[world_rank_], MpiGolTag::Run, mpi_comm_);
-        std::cout << world_rank_ << " sent.\n";
       }
 
       CalculatePart();
@@ -418,10 +414,12 @@ void GameOfLife::BroadcastField() {
     }
 
     borders_.push_back(0);
-    for (int i = 1; i < world_size_ + 1; ++i) {
-      borders_.push_back(static_cast<long long>(field_.size() / world_size_));
+    borders_.push_back(0);
+    for (int i = 2; i < world_size_ + 1; ++i) {
+      borders_.push_back(static_cast<long long>(
+          field_.size() / (world_size_ - 1)));
       // Остаток распределяем между первыми потоками.
-      if (i - 1 < field_.size() % world_size_) {
+      if (i - 1 < field_.size() % (world_size_ - 1) + 1) {
         ++borders_[i];
       }
       borders_[i] += borders_[i - 1];
@@ -465,7 +463,6 @@ bool GameOfLife::Running() {
       MPI_Send(&x, 1, MPI_BYTE, i, MpiGolTag::Running, mpi_comm_);
       MPI_Recv(&locally_running, 1, MPI_CXX_BOOL, i, MpiGolTag::Running,
           mpi_comm_, MPI_STATUS_IGNORE);
-      std::cout << "Received r_ from " << i << "\n";
       running_ = running_ || locally_running;
     }
   }
