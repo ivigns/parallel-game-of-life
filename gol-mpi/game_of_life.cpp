@@ -304,7 +304,6 @@ void GameOfLife::SlaveSynchronize() {
         }
       }
     } else {
-      std::cout << world_rank_ << " ready.\n";
       SlaveRecv(border_gained, quit, notify_master);
     }
   }
