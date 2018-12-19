@@ -346,8 +346,8 @@ void GameOfLife::SlaveRecv(bool* border_gained, bool& quit,
       MPI_Recv(&x, 1, MPI_BYTE, 0, MpiGolTag::Update, mpi_comm_,
           MPI_STATUS_IGNORE);
       for (long long j = borders_[0]; j < borders_.back(); ++j) {
-        MPI_Recv(field_[j].data(), static_cast<int>(field_[0].size()),
-            MPI_BYTE, 0, MpiGolTag::Update, mpi_comm_, MPI_STATUS_IGNORE);
+        MPI_Send(field_[j].data(), static_cast<int>(field_[0].size()),
+            MPI_BYTE, 0, MpiGolTag::Update, mpi_comm_);
       }
 
     } else if (status.MPI_TAG == MpiGolTag::Quit) {
