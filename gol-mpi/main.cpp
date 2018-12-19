@@ -149,6 +149,7 @@ int main(int argc, char** argv) {
 
   } else {
     gol.SlaveSynchronize();
+    std::cout << world_rank << " ded\n";
   }
 
   MPI_Finalize();
