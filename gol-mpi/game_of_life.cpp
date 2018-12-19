@@ -404,6 +404,9 @@ void GameOfLife::CalculatePart() {
 
 void GameOfLife::BroadcastField() {
   if (world_rank_ == 0) {
+    useful_world_size_ = std::min(world_size_,
+        static_cast<int>(field_.size() + 1));
+
     char x = 1;
     for (int i = 1; i < useful_world_size_; ++i) { // Оповещаем все процессы о старте.
       MPI_Send(&x, 1, MPI_BYTE, i, MpiGolTag::Start, mpi_comm_);
@@ -443,9 +446,6 @@ void GameOfLife::BroadcastField() {
 
     borders_.push_back(1);
     borders_.push_back(size[0] - 1);
-
-    useful_world_size_ = std::min(world_size_,
-        static_cast<int>(field_.size() + 1));
   }
 
   for (int i = 1; i < useful_world_size_; ++i) {
