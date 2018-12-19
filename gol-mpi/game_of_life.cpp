@@ -113,7 +113,7 @@ bool GameOfLife::Run(const size_t add_iterations) {
 
   if (world_rank_ == 0) { // мастер
     size_t message = add_iterations;
-    for (int i = 1; i < useful_world_size_; ++i) {
+    for (int i = 1; i < world_size_; ++i) {
       MPI_Send(&message, 1, MPI_UNSIGNED_LONG, i, MpiGolTag::Run, mpi_comm_);
     }
     up_to_date_ = false;
@@ -135,24 +135,24 @@ bool GameOfLife::Stop(const size_t final_iterations_count) {
 
   if (world_rank_ == 0) { // мастер
     char x = 1;
-    for (int i = 1; i < useful_world_size_; ++i) { // Посылаем сигнал об остановке.
+    for (int i = 1; i < world_size_; ++i) { // Посылаем сигнал об остановке.
       MPI_Send(&x, 1, MPI_BYTE, i, MpiGolTag::Stop, mpi_comm_);
     }
     size_t message;
     size_t max_iterations_count = 0;
-    for (int i = 1; i < useful_world_size_; ++i) { // Получаем текущее число итераций.
+    for (int i = 1; i < world_size_; ++i) { // Получаем текущее число итераций.
       MPI_Recv(&message, 1, MPI_UNSIGNED_LONG, i, MpiGolTag::Stop, mpi_comm_,
           MPI_STATUS_IGNORE);
       max_iterations_count = std::max(message, max_iterations_count);
     }
     ++max_iterations_count;
     // Посылаем число итераций для доделывания.
-    for (int i = 1; i < useful_world_size_; ++i) {
+    for (int i = 1; i < world_size_; ++i) {
       MPI_Send(&max_iterations_count, 1, MPI_UNSIGNED_LONG, i,
           MpiGolTag::Stop, mpi_comm_);
     }
     desired_iterations_count_ = max_iterations_count;
-    for (int i = 1; i < useful_world_size_; ++i) { // Ожидаем завершения работы.
+    for (int i = 1; i < world_size_; ++i) { // Ожидаем завершения работы.
       MPI_Recv(&x, 1, MPI_BYTE, i, MpiGolTag::Stop, mpi_comm_,
           MPI_STATUS_IGNORE);
     }
@@ -178,10 +178,10 @@ bool GameOfLife::Update() {
 
   if (world_rank_ == 0) {
     char x = 1;
-    for (int i = 1; i < useful_world_size_; ++i) { // Посылаем сигнал об обновлении.
+    for (int i = 1; i < world_size_; ++i) { // Посылаем сигнал об обновлении.
       MPI_Send(&x, 1, MPI_BYTE, i, MpiGolTag::Update, mpi_comm_);
     }
-    for (int i = 1; i < useful_world_size_; ++i) { // Собираем поле по кусочкам.
+    for (int i = 1; i < world_size_; ++i) { // Собираем поле по кусочкам.
       for (long long j = borders_[i]; j < borders_[i + 1]; ++j) {
         MPI_Recv(field_[j].data(), static_cast<int>(field_[0].size()),
             MPI_BYTE, i, MpiGolTag::Update, mpi_comm_, MPI_STATUS_IGNORE);
@@ -250,7 +250,6 @@ void GameOfLife::SetMpiCommunicator(const MPI_Comm& mpi_comm) {
   int world_size;
   MPI_Comm_size(mpi_comm_, &world_size);
   world_size_ = world_size;
-  useful_world_size_ = world_size;
   int world_rank;
   MPI_Comm_rank(mpi_comm_, &world_rank);
   world_rank_ = world_rank;
@@ -403,28 +402,29 @@ void GameOfLife::CalculatePart() {
 }
 
 void GameOfLife::BroadcastField() {
-  if (world_rank_ == 0) {
-    useful_world_size_ = std::min(world_size_,
-        static_cast<int>(field_.size() + 1));
+  for (int i = 1; i < world_size_; ++i) {
+    process_.push_back(i);
+  }
 
+  if (world_rank_ == 0) {
     char x = 1;
-    for (int i = 1; i < useful_world_size_; ++i) { // Оповещаем все процессы о старте.
+    for (int i = 1; i < world_size_; ++i) { // Оповещаем все процессы о старте.
       MPI_Send(&x, 1, MPI_BYTE, i, MpiGolTag::Start, mpi_comm_);
     }
 
     borders_.push_back(0);
     borders_.push_back(0);
-    for (int i = 2; i < useful_world_size_ + 1; ++i) {
+    for (int i = 2; i < world_size_ + 1; ++i) {
       borders_.push_back(static_cast<long long>(
-          field_.size() / (useful_world_size_ - 1)));
+          field_.size() / (world_size_ - 1)));
       // Остаток распределяем между первыми потоками.
-      if (i - 1 < field_.size() % (useful_world_size_ - 1) + 1) {
+      if (i - 1 < field_.size() % (world_size_ - 1) + 1) {
         ++borders_[i];
       }
       borders_[i] += borders_[i - 1];
     }
 
-    for (int i = 1; i < useful_world_size_; ++i) {
+    for (int i = 1; i < world_size_; ++i) {
       long long size[2] = {borders_[i + 1] - borders_[i] + 2,
                            static_cast<long long>(field_[0].size())};
       MPI_Send(size, 2, MPI_LONG_LONG, i, MpiGolTag::FieldSize, mpi_comm_);
@@ -447,10 +447,6 @@ void GameOfLife::BroadcastField() {
     borders_.push_back(1);
     borders_.push_back(size[0] - 1);
   }
-
-  for (int i = 1; i < useful_world_size_; ++i) {
-    process_.push_back(i);
-  }
 }
 
 bool GameOfLife::Running() {
@@ -462,7 +458,7 @@ bool GameOfLife::Running() {
     running_ = false;
     bool locally_running;
     char x = 1;
-    for (int i = 1; i < useful_world_size_; ++i) {
+    for (int i = 1; i < world_size_; ++i) {
       MPI_Send(&x, 1, MPI_BYTE, i, MpiGolTag::Running, mpi_comm_);
       MPI_Recv(&locally_running, 1, MPI_CXX_BOOL, i, MpiGolTag::Running,
           mpi_comm_, MPI_STATUS_IGNORE);
